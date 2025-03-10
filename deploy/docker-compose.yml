@@ -1,0 +1,87 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16
+    container_name: db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: crud_project
+      POSTGRES_PORT: 5432
+    ports:
+      - "5432:5432"
+    networks:
+      - app_network
+    volumes:
+      - C:/Users/aidyn/Desktop/crud_project/deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+
+  grpc-server:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.server
+    container_name: grpc-server
+    ports:
+      - "9001:9001"
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/crud_project?sslmode=disable
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=grpc-server
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_TRACES_EXPORTER=otlp
+    depends_on:
+      - db
+    networks:
+      - app_network
+      
+
+
+  otel-collector:
+    image: otel/opentelemetry-collector
+    container_name: otel-collector
+    networks:
+      - app_network
+    ports:
+      - "9464:9464"
+      - "4317:4317"
+    volumes:
+    - ./otel-collector-config.yaml:/etc/otel-collector.yaml
+    command:
+    - "--config=/etc/otel-collector.yaml"
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: prometheus
+    networks:
+      - app_network
+    ports:
+      - "9090:9090"
+    volumes:
+    - C:/Users/aidyn/Desktop/crud_project/deploy/prometheus.yml:/etc/prometheus/prometheus.yml 
+  
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: jaeger
+    ports:
+      - 16686:16686
+    networks:
+      - app_network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - app_network
+  
+networks:
+  app_network:
+    driver: bridge
