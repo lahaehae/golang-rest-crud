@@ -11,6 +11,7 @@ import (
 	"github.com/lahaehae/crud_project/internal/db"
 	"github.com/lahaehae/crud_project/internal/handler"
 	"github.com/lahaehae/crud_project/internal/repository"
+	"github.com/lahaehae/crud_project/internal/service"
 	"github.com/lahaehae/crud_project/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -61,9 +62,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database")
 	}
-
+	//dependency injection
 	userRepository := repository.NewUserRepository(conn)
-	userHandler := handler.NewUserHandler(userRepository)
+	userService := service.NewUserService(*userRepository)
+	userHandler := handler.NewUserHandler(userService)
 	
 
 	r := gin.Default()

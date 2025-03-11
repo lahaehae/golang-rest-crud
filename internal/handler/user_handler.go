@@ -6,15 +6,17 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/lahaehae/crud_project/internal/models"
-	"github.com/lahaehae/crud_project/internal/repository"
+
+	//"github.com/lahaehae/crud_project/internal/repository"
+	"github.com/lahaehae/crud_project/internal/service"
 )
 
 type UserHandler struct {
-	repo *repository.UserRepository
+	service *service.UserService
 }
 
-func NewUserHandler(repo *repository.UserRepository) *UserHandler {
-	return &UserHandler{repo: repo}
+func NewUserHandler(service *service.UserService) *UserHandler {
+	return &UserHandler{service: service}
 }
 
 type TransferRequest struct {
@@ -31,7 +33,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	newUser, err := h.repo.CreateUser(c.Request.Context(), user.Name, user.Email, user.Balance)
+	newUser, err := h.service.CreateUser(c.Request.Context(), user.Name, user.Email, user.Balance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -46,7 +48,7 @@ func (h *UserHandler) TransferFunds(c *gin.Context){
 		return
 	}
 
-	transferFunds, err := h.repo.TransferFunds(c.Request.Context(), req.FromID, req.ToID, req.Balance)
+	transferFunds, err := h.service.TransferFunds(c.Request.Context(), req.FromID, req.ToID, req.Balance)
 	if err != nil{
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction Failed"})
 		return
@@ -68,7 +70,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 		return
 	}
 
-	user, err := h.repo.GetUser(c.Request.Context(), id)
+	user, err := h.service.GetUser(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -90,7 +92,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	updatedUser, err := h.repo.UpdateUser(c.Request.Context(), id, user.Name, user.Email, user.Balance)
+	updatedUser, err := h.service.UpdateUser(c.Request.Context(), id, user.Name, user.Email, user.Balance)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -106,7 +108,7 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	if err := h.repo.DeleteUser(c.Request.Context(), id); err != nil {
+	if err := h.service.DeleteUser(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
