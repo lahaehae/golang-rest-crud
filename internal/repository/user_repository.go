@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	pb "github.com/lahaehae/crud_project/internal/pb"
+	"github.com/lahaehae/crud_project/internal/models"
 	"github.com/lahaehae/crud_project/internal/telemetry"
 
 	//"github.com/lahaehae/crud_project/internal/telemetry"
@@ -18,11 +18,11 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, name, email string) (*pb.UserResponse, error)
-	GetUser(ctx context.Context, id int64) (*pb.UserResponse, error)
-	UpdateUser(ctx context.Context, id int64) (*pb.UserResponse, error)
-	DeleteUser(ctx context.Context, id int64) error
-	TransferFunds(ctx context.Context, fromId, toId, balance int64) (*pb.UserResponse, error)
+    CreateUser(ctx context.Context, name, email string, balance int64) (*models.User, error)
+    GetUser(ctx context.Context, id int64) (*models.User, error)
+    UpdateUser(ctx context.Context, id int64, name, email string, balance int64) (*models.User, error)
+    DeleteUser(ctx context.Context, id int64) error
+    TransferFunds(ctx context.Context, fromId, toId, balance int64) (*models.User, error)
 }
 
 type UserRepository struct {
@@ -40,7 +40,7 @@ func NewUserRepository(db *pgxpool.Pool) *UserRepository {
 }
 
 // method CreateUser without transaction
-func (r *UserRepository) CreateUser(ctx context.Context, name, email string, balance int64) (*pb.UserResponse, error) {
+func (r *UserRepository) CreateUser(ctx context.Context, name, email string, balance int64) (*models.User, error) {
 	ctx, span := r.tracer.Start(ctx, "Repository.CreateUser")
 	defer span.End()
 
@@ -68,22 +68,22 @@ func (r *UserRepository) CreateUser(ctx context.Context, name, email string, bal
 	if telemetry.RepoLatencyRecorder != nil {
 		telemetry.RepoLatencyRecorder.Record(ctx, time.Since(start).Seconds())
 	}
-	return &pb.UserResponse{
+	return &models.User{
 		Id:      id,
 		Name:    name,
 		Email:   email,
 		Balance: balance,
-	}, nil
+	}, nil	
 }
 
 // method GetUser without transaction
-func (r *UserRepository) GetUser(ctx context.Context, id int64) (*pb.UserResponse, error) {
+func (r *UserRepository) GetUser(ctx context.Context, id int64) (*models.User, error) {
 	ctx, span := r.tracer.Start(ctx, "Repository.GetUser")
 	defer span.End()
 
 	start := time.Now()
 
-	var user pb.UserResponse
+	var user models.User
 	query := "SELECT id, name, email, balance FROM users WHERE id = $1"
 	err := r.db.QueryRow(ctx, query, id).Scan(&user.Id, &user.Name, &user.Email, &user.Balance)
 	if err != nil {
@@ -109,7 +109,7 @@ func (r *UserRepository) GetUser(ctx context.Context, id int64) (*pb.UserRespons
 	return &user, nil
 }
 
-func (r *UserRepository) UpdateUser(ctx context.Context, id int64, name, email string, balance int64) (*pb.UserResponse, error) {
+func (r *UserRepository) UpdateUser(ctx context.Context, id int64, name, email string, balance int64) (*models.User, error) {
 	ctx, span := r.tracer.Start(ctx, "Repository.UpdateUser")
 	defer span.End()
 
@@ -137,15 +137,16 @@ func (r *UserRepository) UpdateUser(ctx context.Context, id int64, name, email s
 	if telemetry.RepoLatencyRecorder != nil {
 		telemetry.RepoLatencyRecorder.Record(ctx, time.Since(start).Seconds())
 	}
-	return &pb.UserResponse{
+	return &models.User{
 		Id:      id,
 		Name:    name,
 		Email:   email,
 		Balance: balance,
 	}, nil
+	
 }
 
-func (r *UserRepository) TransferFunds(ctx context.Context, fromId, toId, balance int64) (*pb.UserResponse, error) {
+func (r *UserRepository) TransferFunds(ctx context.Context, fromId, toId, balance int64) (*models.User, error) {
 	ctx, span := r.tracer.Start(ctx, "Repository.TransferFunds")
 	defer span.End()
 
@@ -198,11 +199,11 @@ func (r *UserRepository) TransferFunds(ctx context.Context, fromId, toId, balanc
 		telemetry.RepoLatencyRecorder.Record(ctx, time.Since(start).Seconds())
 	}
 
-	return &pb.UserResponse{
+	return &models.User{
 		Id:      toId,
 		Balance: newBalance,
 	}, nil
-
+	
 }
 
 func (r *UserRepository) DeleteUser(ctx context.Context, id int64) error {

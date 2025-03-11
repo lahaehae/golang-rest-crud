@@ -24,7 +24,7 @@ func main() {
 	defer cancel()
 	res := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		attribute.String("service.name", "grpc-service"),
+		attribute.String("service.name", "rest-service"),
 		attribute.String("service.version", "1.0.0"),
 		attribute.String("service.instance.id", "instance-123"),
 	)
@@ -72,6 +72,7 @@ func main() {
 	r.GET("/users/:id", userHandler.GetUser)
 	r.PUT("/users/:id", userHandler.UpdateUser)
 	r.DELETE("/users/:id", userHandler.DeleteUser)
+	r.POST("/transfer", userHandler.TransferFunds)
 
 	log.Println("Server is running on :8080")
 	http.ListenAndServe("0.0.0.0:8080", r)
