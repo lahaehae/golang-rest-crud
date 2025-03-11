@@ -3,54 +3,49 @@ package main
 import (
 	"context"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"time"
 
-	pb "github.com/lahaehae/crud_project/internal/pb"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"github.com/gin-gonic/gin"
+	"github.com/lahaehae/crud_project/internal/db"
+	"github.com/lahaehae/crud_project/internal/handler"
+	"github.com/lahaehae/crud_project/internal/repository"
+	"github.com/lahaehae/crud_project/internal/telemetry"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
-
-	//"go.opentelemetry.io/otel/trace"
-	"github.com/lahaehae/crud_project/internal/db"
-	repository "github.com/lahaehae/crud_project/internal/repository"
-	service "github.com/lahaehae/crud_project/internal/service"
-	"github.com/lahaehae/crud_project/internal/telemetry"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 func main() {
-	log.Printf("Waiting for connection...")
+	log.Printf("Starting REST server...")
 	
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	res := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		attribute.String("service.name", "grpc-service"),
+		attribute.String("service.name", "rest-service"),
 		attribute.String("service.version", "1.0.0"),
 		attribute.String("service.instance.id", "instance-123"),
 	)
 	
 
 	// Подключение к OpenTelemetry Collector
-	otelConn, err := telemetry.InitConn()
-	if err != nil {
-		log.Fatalf("Ошибка подключения к OTEL Collector: %v", err)
-	}
-	log.Println("Успешное подключение к OTEL Collector")
-	defer otelConn.Close()
+	// otelConn, err := telemetry.InitConn()
+	// if err != nil {
+	// 	log.Fatalf("Ошибка подключения к OTEL Collector: %v", err)
+	// }
+	// log.Println("Успешное подключение к OTEL Collector")
+	// defer otelConn.Close()
 
-	shutdownTracer, err := telemetry.InitTracerProvider(ctx, res, otelConn)
+	shutdownTracer, err := telemetry.InitTracerProvider(ctx, res)
 	if err != nil {
 		log.Fatalf("Ошибка инициализации трассировки: %v", err)
 	}
 	log.Println("Успешное инициализация трассировки")
 	defer shutdownTracer(ctx)
 
-	shutdownMeter, err := telemetry.InitMeterProvider(ctx, res, otelConn)
+	shutdownMeter, err := telemetry.InitMeterProvider(ctx, res)
 	if err != nil {
 		log.Fatalf("Ошибка инициализации метрик: %v", err)
 	}
@@ -68,27 +63,18 @@ func main() {
 	}
 
 	userRepository := repository.NewUserRepository(conn)
-	userService := service.NewUserService(*userRepository)
-
-	lis, err := net.Listen("tcp", ":9001")
-	if err != nil {
-		log.Fatalf("Failed to connect to tcp server at 9001: %v", err)
-	}
-
-	grpcServer := grpc.NewServer(
-		grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		grpc.MaxConcurrentStreams(1000),	
-	)
-
-	reflection.Register(grpcServer)
-
-
-	pb.RegisterUserServiceServer(grpcServer, userService)
-
-	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
-	}
-
+	userHandler := handler.NewUserHandler(userRepository)
 	
+
+	r := gin.Default()
+
+	r.POST("/users", userHandler.CreateUser)
+	r.GET("/users/:id", userHandler.GetUser)
+	r.PUT("/users/:id", userHandler.UpdateUser)
+	r.DELETE("/users/:id", userHandler.DeleteUser)
+	r.POST("/transfer", userHandler.TransferFunds)
+
+	log.Println("Server is running on :8080")
+	http.ListenAndServe("0.0.0.0:8080", r)
 
 }
