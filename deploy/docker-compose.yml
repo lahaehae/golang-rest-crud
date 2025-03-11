@@ -18,17 +18,17 @@ services:
       - C:/Users/aidyn/Desktop/crud_project/deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
 
 
-  grpc-server:
+  rest-server:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.server
-    container_name: grpc-server
+    container_name: rest-server
     ports:
-      - "9001:9001"
+      - "8080:8080"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@db:5432/crud_project?sslmode=disable
-      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
-      - OTEL_SERVICE_NAME=grpc-server
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - OTEL_SERVICE_NAME=rest-server
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_TRACES_EXPORTER=otlp
     depends_on:
@@ -46,6 +46,7 @@ services:
     ports:
       - "9464:9464"
       - "4317:4317"
+      - "4318:4318"
     volumes:
     - ./otel-collector-config.yaml:/etc/otel-collector.yaml
     command:
