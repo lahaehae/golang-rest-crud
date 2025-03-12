@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,12 +16,12 @@ import (
 )
 
 type UserService struct {	
-	repo repository.UserRepository
+	repo repository.UserRepo
 	meter metric.Meter;
 	tracer trace.Tracer;
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
+func NewUserService(repo repository.UserRepo) *UserService {
 	return &UserService{
 		repo: repo,
 		meter: otel.Meter("service"),
@@ -79,6 +80,9 @@ func (s *UserService) GetUser(ctx context.Context, id int64) (*models.User, erro
 
 
 	user, err := s.repo.GetUser(ctx, id)
+	if user == nil {
+		return nil, errors.New("user not found")
+	}
 	if err != nil {
 		span.RecordError(err)
 		telemetry.ErrorCounter.Add(ctx, 1, metric.WithAttributes(

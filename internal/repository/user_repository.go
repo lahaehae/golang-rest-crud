@@ -31,7 +31,9 @@ type UserRepository struct {
 	tracer trace.Tracer
 }
 
-func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+var _ UserRepo = (*UserRepository)(nil)
+
+func NewUserRepository(db *pgxpool.Pool) UserRepo {
 	return &UserRepository{
 		db:     db,
 		meter:  otel.Meter("repository"),

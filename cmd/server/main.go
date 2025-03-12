@@ -64,7 +64,7 @@ func main() {
 	}
 	//dependency injection
 	userRepository := repository.NewUserRepository(conn)
-	userService := service.NewUserService(*userRepository)
+	userService := service.NewUserService(userRepository)
 	userHandler := handler.NewUserHandler(userService)
 	
 
