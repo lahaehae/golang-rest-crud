@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+        - name: db
+          image: postgres:16
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+            - name: POSTGRES_DB
+              value: "crud_project"
+          ports:
+            - containerPort: 5432
+          volumeMounts:
+            - name: init-script
+              mountPath: /docker-entrypoint-initdb.d/  # Директория, куда монтируется скрипт
+      volumes:
+        - name: init-script
+          configMap:
+            name: db-init-script  # Имя ConfigMap
+            items:
+              - key: init.sql      # Ключ в ConfigMap
+                path: init.sql    # Имя файла в контейнере
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-init-script
+data:
+  init.sql: |
+    CREATE TABLE users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR,
+        email VARCHAR,
+        balance BIGINT NOT NULL CHECK (balance >= 0)
+    );
+
+    INSERT INTO users (name, email, balance) VALUES 
+    ('Alice', 'alice@mail.ru', 1000), 
+    ('Bob', 'bobmarley@gmail.com', 2000);
