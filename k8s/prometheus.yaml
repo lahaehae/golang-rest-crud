@@ -31,7 +31,14 @@ spec:
           image: prom/prometheus:v3.2.1
           ports:
             - containerPort: 9090
-
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config
 ---
 apiVersion: v1
 kind: ConfigMap

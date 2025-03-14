@@ -7,10 +7,16 @@ spec:
   selector:
     app: jaeger
   ports:
-    - protocol: TCP
+    - name: ui
+      protocol: TCP
       port: 16686
       targetPort: 16686
       nodePort: 32000
+    - name: grpc
+      protocol: TCP
+      port: 4317
+      targetPort: 4317
+      nodePort: 32001
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -30,4 +36,7 @@ spec:
         - name: jaeger
           image: jaegertracing/all-in-one:1.60
           ports:
-            - containerPort: 16686
+            - containerPort: 16686  # UI
+            - containerPort: 4317   # OTLP
+          args:
+            - "--collector.otlp.enabled=true"
