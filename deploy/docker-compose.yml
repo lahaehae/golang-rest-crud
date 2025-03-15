@@ -17,7 +17,6 @@ services:
     volumes:
       - C:/Users/aidyn/Desktop/crud_project/deploy/init.sql:/docker-entrypoint-initdb.d/init.sql
 
-
   rest-server:
     build:
       context: ..
@@ -31,12 +30,13 @@ services:
       - OTEL_SERVICE_NAME=rest-server
       - OTEL_METRICS_EXPORTER=otlp
       - OTEL_TRACES_EXPORTER=otlp
+      - KRATOS_PUBLIC_URL=http://kratos:4433
+      - KRATOS_ADMIN_URL=http://kratos:4434
     depends_on:
       - db
+      - kratos
     networks:
       - app_network
-      
-
 
   otel-collector:
     image: otel/opentelemetry-collector
@@ -48,9 +48,10 @@ services:
       - "4317:4317"
       - "4318:4318"
     volumes:
-    - ./otel-collector-config.yaml:/etc/otel-collector.yaml
+      - ./otel-collector-config.yaml:/etc/otel-collector.yaml
     command:
-    - "--config=/etc/otel-collector.yaml"
+      - "--config=/etc/otel-collector.yaml"
+
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: prometheus
@@ -59,8 +60,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-    - C:/Users/aidyn/Desktop/crud_project/deploy/prometheus.yml:/etc/prometheus/prometheus.yml 
-  
+      - C:/Users/aidyn/Desktop/crud_project/deploy/prometheus.yml:/etc/prometheus/prometheus.yml 
+
   jaeger:
     image: jaegertracing/all-in-one:1.60
     container_name: jaeger
@@ -82,7 +83,50 @@ services:
       - jaeger
     networks:
       - app_network
-  
+
+  kratos-db:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: kratos
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: kratos
+    ports:
+      - "5433:5432"  # Изменен порт, чтобы избежать конфликта
+    volumes:
+      - kratos-postgres:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  kratos-migrate:
+    image: oryd/kratos:v1.3.1
+    environment:
+      - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable
+    volumes:
+      - ../config/kratos:/etc/config/kratos
+    command: -c /etc/config/kratos/kratos.yml migrate sql -e --yes
+    networks:
+      - app_network
+    depends_on:
+      - kratos-db
+
+  kratos:
+    image: oryd/kratos:v1.3.1
+    ports:
+      - "4433:4433" # public
+      - "4434:4434" # admin
+    environment:
+      - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable
+    volumes:
+      - ../config/kratos:/etc/config/kratos
+    command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
+    networks:
+      - app_network
+    depends_on:
+      - kratos-migrate
+
 networks:
   app_network:
     driver: bridge
+
+volumes:
+  kratos-postgres:
