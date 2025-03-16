@@ -116,6 +116,7 @@ services:
       - "4434:4434" # admin
     environment:
       - DSN=postgres://kratos:secret@kratos-db:5432/kratos?sslmode=disable
+      - LOG_LEVEL=debug
     volumes:
       - ../config/kratos:/etc/config/kratos
     command: serve -c /etc/config/kratos/kratos.yml --dev --watch-courier
@@ -123,6 +124,15 @@ services:
       - app_network
     depends_on:
       - kratos-migrate
+      - kratos-db
+      - mailhog
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"  # SMTP сервер
+      - "8025:8025"  # Веб-интерфейс
+    networks:
+      - app_network
 
 networks:
   app_network:

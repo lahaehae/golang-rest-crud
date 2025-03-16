@@ -13,6 +13,8 @@ import (
 	"github.com/lahaehae/crud_project/internal/repository"
 	"github.com/lahaehae/crud_project/internal/service"
 	"github.com/lahaehae/crud_project/internal/telemetry"
+
+	"github.com/lahaehae/crud_project/internal/middleware"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -68,7 +70,27 @@ func main() {
 	userHandler := handler.NewUserHandler(userService)
 	
 
+	subUserRepo := repository.NewSubUserRepository(conn)
+    
+    // Сервисы
+    subUserService := service.NewSubUserService(subUserRepo)
+    
+    // Обработчики
+    subUserHandler := handler.NewSubUserHandler(subUserService)
+    
+    // Middleware
+    authMiddleware := middleware.NewKratosAuthMiddleware()
+
 	r := gin.Default()
+
+	api := r.Group("/api")
+	api.Use(authMiddleware.Authenticate())
+	{
+        // Маршруты для работы с суб-пользователями
+        api.POST("/subusers", subUserHandler.CreateSubUser)
+        api.GET("/subusers", subUserHandler.GetUserSubUsers)
+        // Другие маршруты...
+    }
 
 	r.POST("/users", userHandler.CreateUser)
 	r.GET("/users/:id", userHandler.GetUser)
@@ -78,5 +100,7 @@ func main() {
 
 	log.Println("Server is running on :8080")
 	http.ListenAndServe("0.0.0.0:8080", r)
+
+
 
 }
